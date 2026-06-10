@@ -11,6 +11,9 @@ var index:int = 0 # Index of structure being built
 @export var view_camera:Camera3D # Used for raycasting mouse
 @export var gridmap:GridMap
 @export var cash_display:Label
+@export var citizen_scene: PackedScene
+
+var citizens = []
 
 var plane:Plane # Used for raycasting mouse
 
@@ -18,6 +21,14 @@ func _ready():
 	
 	map = DataMap.new()
 	plane = Plane(Vector3.UP, Vector3.ZERO)
+	
+	# Generate a goofy-ahh grid of grass to start
+	for i in range(-25, 25):
+		for j in range(-25, 25):
+			gridmap.set_cell_item(Vector3i(i, 0, j), 12 + randi() % 3)
+	
+	# Generate mountainous border
+	generate_border()
 	
 	# Create new MeshLibrary dynamically, can also be done in the editor
 	# See: https://docs.godotengine.org/en/stable/tutorials/3d/using_gridmaps.html
@@ -32,10 +43,16 @@ func _ready():
 		mesh_library.set_item_mesh(id, get_mesh(structure.model))
 		mesh_library.set_item_mesh_transform(id, Transform3D())
 		
+		mesh_library.set_item_shapes(id, [get_collision_shape(structure.model), Transform3D()])
+
+		
 	gridmap.mesh_library = mesh_library
 	
 	update_structure()
 	update_cash()
+	
+	# Spawn the goofy-ahh citizens
+	spawn_citizens(5)
 
 func _process(delta):
 	
@@ -72,6 +89,11 @@ func get_mesh(packed_scene):
 					var prop_value = scene_state.get_node_property_value(i, j)
 					
 					return prop_value.duplicate()
+
+func get_collision_shape(packed_scene):
+	var mesh = get_mesh(packed_scene)
+	var shape = mesh.create_trimesh_shape()
+	return shape
 
 # Build (place) a structure
 
@@ -178,3 +200,43 @@ func action_load_resources():
 			gridmap.set_cell_item(Vector3i(cell.position.x, 0, cell.position.y), cell.structure, cell.orientation)
 			
 		update_cash()
+
+func spawn_citizens(count: int):
+	for i in count:
+		var c = citizen_scene.instantiate()
+		add_child(c)
+		c.global_position = Vector3(
+			randf_range(-20, 20),
+			1.0,
+			randf_range(-20, 20)
+			)
+		citizens.append(c)
+
+func generate_border():
+	var border = 26  # one tile outside the 50x50 play area
+	
+	for i in range(-border, border + 1):
+		# North and south edges
+		place_mountain(Vector3i(i, 0, -border))
+		place_mountain(Vector3i(i, 0, border))
+		# East and west edges
+		place_mountain(Vector3i(-border, 0, i))
+		place_mountain(Vector3i(border, 0, i))
+
+		# Double up the ring for a thicker mountain range
+		place_mountain(Vector3i(i, 0, -border - 1))
+		place_mountain(Vector3i(i, 0, border + 1))
+		place_mountain(Vector3i(-border - 1, 0, i))
+		place_mountain(Vector3i(border + 1, 0, i))
+
+		# Add a second height layer for visual depth
+		place_mountain(Vector3i(i, 1, -border))
+		place_mountain(Vector3i(i, 1, border))
+		place_mountain(Vector3i(-border, 1, i))
+		place_mountain(Vector3i(border, 1, i))
+
+func place_mountain(pos: Vector3i):
+	# Use whichever index in your structures array is a rock/cliff tile
+	# Check your Inspector — count from 0 what index your rock tile is
+	var mountain_tile = 0  # ← change this to your rock/cliff tile index
+	gridmap.set_cell_item(pos, mountain_tile)

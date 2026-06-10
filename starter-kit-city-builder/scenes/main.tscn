@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3 uid="uid://vgwrcfy1qawf"]
+[gd_scene format=3 uid="uid://vgwrcfy1qawf"]
 
 [ext_resource type="Script" uid="uid://76g8ejmdibal" path="res://scripts/builder.gd" id="1_jybm7"]
 [ext_resource type="Environment" uid="uid://jbptgqvstei3" path="res://scenes/main-environment.tres" id="1_yndf3"]
@@ -22,17 +22,34 @@
 [ext_resource type="Resource" uid="uid://bqb6g3t0tebno" path="res://structures/building-garage.tres" id="13_ut2cy"]
 [ext_resource type="FontFile" uid="uid://d0cxd77jybrcn" path="res://fonts/lilita_one_regular.ttf" id="16_vlub6"]
 [ext_resource type="Texture2D" uid="uid://bng0d1sou7c8a" path="res://sprites/coin.png" id="17_cjamx"]
+[ext_resource type="PackedScene" uid="uid://cwik60akjhciu" path="res://citizen.tscn" id="18_og1vs"]
 [ext_resource type="Texture2D" uid="uid://ciwbdik3tmxtp" path="res://sprites/instructions.png" id="22_pm3ni"]
 [ext_resource type="AudioStream" uid="uid://wvfsgkl8qob6" path="res://sounds/ambience.ogg" id="24_y6deb"]
+[ext_resource type="Script" uid="uid://c1x2k2iiyluhs" path="res://scenes/player.gd" id="26_2wyq8"]
+
+[sub_resource type="MeshLibrary" id="MeshLibrary_2wyq8"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_q176i"]
 font = ExtResource("16_vlub6")
 font_size = 24
 shadow_color = Color(0, 0, 0, 0.392157)
 
-[node name="Main" type="Node3D"]
+[sub_resource type="NavigationMesh" id="NavigationMesh_y6deb"]
 
-[node name="Builder" type="Node3D" parent="." node_paths=PackedStringArray("selector", "selector_container", "view_camera", "gridmap", "cash_display")]
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_og1vs"]
+
+[sub_resource type="ORMMaterial3D" id="ORMMaterial3D_2wyq8"]
+albedo_color = Color(0.48235294, 1, 1, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_og1vs"]
+material = SubResource("ORMMaterial3D_2wyq8")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2wyq8"]
+size = Vector3(50, 1, 50)
+
+[node name="Main" type="Node3D" unique_id=516018331]
+
+[node name="Builder" type="Node3D" parent="." unique_id=837941451 node_paths=PackedStringArray("selector", "selector_container", "view_camera", "gridmap", "cash_display")]
 script = ExtResource("1_jybm7")
 structures = Array[ExtResource("2_54v6r")]([ExtResource("2_bwyku"), ExtResource("3_o6o81"), ExtResource("3_6fpyf"), ExtResource("7_kqu4g"), ExtResource("8_1swhv"), ExtResource("4_b632v"), ExtResource("8_4il2q"), ExtResource("5_v5o2m"), ExtResource("6_f4603"), ExtResource("10_84or2"), ExtResource("12_8obn7"), ExtResource("13_ut2cy"), ExtResource("9_ifw7y"), ExtResource("10_vaeah"), ExtResource("13_t5d2v")])
 selector = NodePath("Selector")
@@ -40,44 +57,46 @@ selector_container = NodePath("Selector/Container")
 view_camera = NodePath("../View/Camera")
 gridmap = NodePath("../GridMap")
 cash_display = NodePath("../CanvasLayer/Top/Cash")
+citizen_scene = ExtResource("18_og1vs")
 
-[node name="Selector" type="Node3D" parent="Builder"]
+[node name="Selector" type="Node3D" parent="Builder" unique_id=1038239160]
 
-[node name="Sprite" type="Sprite3D" parent="Builder/Selector"]
+[node name="Sprite" type="Sprite3D" parent="Builder/Selector" unique_id=626119582]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0.06, 0)
 texture = ExtResource("4_wr1wv")
 
-[node name="Container" type="Node3D" parent="Builder/Selector"]
+[node name="Container" type="Node3D" parent="Builder/Selector" unique_id=790926761]
 
-[node name="View" type="Node3D" parent="."]
-transform = Transform3D(0.707107, -0.40558, 0.579228, 0, 0.819152, 0.573576, -0.707107, -0.40558, 0.579228, 0, 0, 0)
-script = ExtResource("8_yovpv")
-
-[node name="Camera" type="Camera3D" parent="View"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 30)
-environment = ExtResource("1_yndf3")
-fov = 20.0
-
-[node name="GridMap" type="GridMap" parent="."]
+[node name="GridMap" type="GridMap" parent="." unique_id=400697058]
+mesh_library = SubResource("MeshLibrary_2wyq8")
 cell_size = Vector3(1, 1, 1)
 cell_center_x = false
 cell_center_y = false
 cell_center_z = false
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=994137855]
 transform = Transform3D(-0.422618, -0.694272, 0.582563, 0, 0.642788, 0.766044, -0.906308, 0.323744, -0.271654, 0, 0, 0)
 shadow_enabled = true
 shadow_opacity = 0.75
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="View" type="Node3D" parent="." unique_id=324000787]
+transform = Transform3D(0.707107, -0.40558, 0.579228, 0, 0.819152, 0.573576, -0.707107, -0.40558, 0.579228, 0, -1, 0)
+script = ExtResource("8_yovpv")
 
-[node name="Top" type="Control" parent="CanvasLayer"]
+[node name="Camera" type="Camera3D" parent="View" unique_id=9040968]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 30)
+environment = ExtResource("1_yndf3")
+fov = 20.0
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=327302228]
+
+[node name="Top" type="Control" parent="CanvasLayer" unique_id=560779850]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="CashIcon" type="TextureRect" parent="CanvasLayer/Top"]
+[node name="CashIcon" type="TextureRect" parent="CanvasLayer/Top" unique_id=1704516053]
 layout_mode = 0
 offset_left = 20.0
 offset_top = 24.0
@@ -86,7 +105,7 @@ offset_bottom = 152.0
 scale = Vector2(0.3, 0.3)
 texture = ExtResource("17_cjamx")
 
-[node name="Cash" type="Label" parent="CanvasLayer/Top"]
+[node name="Cash" type="Label" parent="CanvasLayer/Top" unique_id=736088984]
 layout_mode = 0
 offset_left = 69.0
 offset_top = 27.0
@@ -95,7 +114,7 @@ offset_bottom = 101.0
 text = "$10,000"
 label_settings = SubResource("LabelSettings_q176i")
 
-[node name="Bottom" type="Control" parent="CanvasLayer"]
+[node name="Bottom" type="Control" parent="CanvasLayer" unique_id=2090717113]
 layout_mode = 3
 anchors_preset = 2
 anchor_top = 1.0
@@ -104,7 +123,7 @@ offset_top = -648.0
 offset_bottom = -648.0
 grow_vertical = 0
 
-[node name="Instructions" type="TextureRect" parent="CanvasLayer/Bottom"]
+[node name="Instructions" type="TextureRect" parent="CanvasLayer/Bottom" unique_id=566704425]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 375.0
@@ -113,7 +132,27 @@ offset_bottom = 887.0
 scale = Vector2(0.5, 0.5)
 texture = ExtResource("22_pm3ni")
 
-[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=115452384]
 stream = ExtResource("24_y6deb")
 volume_db = -30.0
 autoplay = true
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=1499260036]
+navigation_mesh = SubResource("NavigationMesh_y6deb")
+
+[node name="CharacterBody3D" type="CharacterBody3D" parent="." unique_id=369604248]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+script = ExtResource("26_2wyq8")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CharacterBody3D" unique_id=1352695221]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.018294454, 0, 0)
+shape = SubResource("CapsuleShape3D_og1vs")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="CharacterBody3D" unique_id=1145694484]
+mesh = SubResource("CapsuleMesh_og1vs")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=1120775419]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=834393259]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+shape = SubResource("BoxShape3D_2wyq8")
