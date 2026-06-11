@@ -1,6 +1,6 @@
 extends CharacterBody3D
 
-const SPEED = 0.25
+const SPEED = 0.15
 const JUMP_VELOCITY = 2.0
 const FRICTION = 0.8
 

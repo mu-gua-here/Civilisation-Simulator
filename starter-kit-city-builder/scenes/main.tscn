@@ -34,8 +34,6 @@ font = ExtResource("16_vlub6")
 font_size = 24
 shadow_color = Color(0, 0, 0, 0.392157)
 
-[sub_resource type="NavigationMesh" id="NavigationMesh_y6deb"]
-
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_og1vs"]
 
 [sub_resource type="ORMMaterial3D" id="ORMMaterial3D_2wyq8"]
@@ -46,6 +44,9 @@ material = SubResource("ORMMaterial3D_2wyq8")
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_2wyq8"]
 size = Vector3(50, 1, 50)
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_2wyq8"]
+geometry_parsed_geometry_type = 1
 
 [node name="Main" type="Node3D" unique_id=516018331]
 
@@ -84,7 +85,7 @@ transform = Transform3D(0.707107, -0.40558, 0.579228, 0, 0.819152, 0.573576, -0.
 script = ExtResource("8_yovpv")
 
 [node name="Camera" type="Camera3D" parent="View" unique_id=9040968]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 30)
+transform = Transform3D(0.9999997, 0, 0, 0, 0.9999999, 7.1525574e-07, 0, 0, 1.0000002, 0, -6.556511e-07, 29.999998)
 environment = ExtResource("1_yndf3")
 fov = 20.0
 
@@ -137,11 +138,8 @@ stream = ExtResource("24_y6deb")
 volume_db = -30.0
 autoplay = true
 
-[node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=1499260036]
-navigation_mesh = SubResource("NavigationMesh_y6deb")
-
 [node name="CharacterBody3D" type="CharacterBody3D" parent="." unique_id=369604248]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0)
 script = ExtResource("26_2wyq8")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="CharacterBody3D" unique_id=1352695221]
@@ -156,3 +154,6 @@ mesh = SubResource("CapsuleMesh_og1vs")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=834393259]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 shape = SubResource("BoxShape3D_2wyq8")
+
+[node name="NavRegion" type="NavigationRegion3D" parent="." unique_id=699202747]
+navigation_mesh = SubResource("NavigationMesh_2wyq8")

@@ -3,7 +3,7 @@ extends Node3D
 var camera_position:Vector3
 var camera_rotation:Vector3
 
-var zoom:float = 15.0
+var zoom:float = 5.0
 
 var camera_offset := Vector3.ZERO
 
@@ -43,21 +43,20 @@ func handle_input(_delta):
 	
 	if input.length() > 0:
 		# Player is panning — move away from player
-		camera_offset += input / 4
+		camera_offset += input / 16
 	else:
 		# No input — gradually drift back to player
-		camera_offset = camera_offset.lerp(Vector3.ZERO, _delta * 3.0)
+		camera_offset = camera_offset.lerp(Vector3.ZERO, _delta * 2.0)
 	
-	if Input.is_action_just_released("zoom_in"):
-		zoom = max(15, zoom - 5)
-	if Input.is_action_just_released("zoom_out"):
-		zoom = min(80, zoom + 5)
+	if Input.is_action_just_pressed("zoom_in"):
+		zoom = max(2, zoom - 5)
+	if Input.is_action_just_pressed("zoom_out"):
+		zoom = min(50, zoom + 5)
 	
 	# Final camera position = player position + offset
 	camera_position = get_player_position() + camera_offset
 
 func _input(event):
-	
 	# Rotate camera using mouse (hold 'middle' mouse button)
 	if event is InputEventMouseMotion:
 		if Input.is_action_pressed("camera_rotate"):

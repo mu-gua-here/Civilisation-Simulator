@@ -12,6 +12,7 @@ var index:int = 0 # Index of structure being built
 @export var gridmap:GridMap
 @export var cash_display:Label
 @export var citizen_scene: PackedScene
+@export var nav_region: NavigationRegion3D
 
 var citizens = []
 
@@ -25,7 +26,7 @@ func _ready():
 	# Generate a goofy-ahh grid of grass to start
 	for i in range(-25, 25):
 		for j in range(-25, 25):
-			gridmap.set_cell_item(Vector3i(i, 0, j), 12 + randi() % 3)
+			gridmap.set_cell_item(Vector3i(i, 0, j), 12)
 	
 	# Generate mountainous border
 	generate_border()
@@ -70,6 +71,10 @@ func _process(delta):
 	var world_position = plane.intersects_ray(
 		view_camera.project_ray_origin(get_viewport().get_mouse_position()),
 		view_camera.project_ray_normal(get_viewport().get_mouse_position()))
+	
+	# Return invalid values
+	if world_position == null:
+		return
 
 	var gridmap_position = Vector3(round(world_position.x), 0, round(world_position.z))
 	selector.position = lerp(selector.position, gridmap_position, min(delta * 40, 1.0))
@@ -107,6 +112,10 @@ func action_build(gridmap_position):
 			map.cash -= structures[index].price
 			update_cash()
 			
+			if nav_region != null:
+				# Rebuild pathfinding mesh
+				nav_region.bake_navigation_mesh()
+			
 			Audio.play("sounds/placement-a.ogg, sounds/placement-b.ogg, sounds/placement-c.ogg, sounds/placement-d.ogg", -20)
 
 # Demolish (remove) a structure
@@ -115,6 +124,10 @@ func action_demolish(gridmap_position):
 	if Input.is_action_just_pressed("demolish"):
 		if gridmap.get_cell_item(gridmap_position) != -1:
 			gridmap.set_cell_item(gridmap_position, -1)
+			
+			if nav_region != null:
+				# Rebuild pathfinding mesh
+				nav_region.bake_navigation_mesh()
 			
 			Audio.play("sounds/removal-a.ogg, sounds/removal-b.ogg, sounds/removal-c.ogg, sounds/removal-d.ogg", -20)
 
@@ -172,6 +185,8 @@ func action_save():
 			map.structures.append(data_structure)
 			
 		ResourceSaver.save(map, "user://map.res")
+		
+		print("Map saved.")
 	
 func action_load():
 	if Input.is_action_just_pressed("load"):
@@ -186,10 +201,12 @@ func action_load():
 			gridmap.set_cell_item(Vector3i(cell.position.x, 0, cell.position.y), cell.structure, cell.orientation)
 			
 		update_cash()
+		
+		print("Map loaded.")
 
 func action_load_resources():
 	if Input.is_action_just_pressed("load_resources"):
-		print("Loading map...")
+		print("Loading prebuilt map...")
 		
 		gridmap.clear()
 		
@@ -200,6 +217,8 @@ func action_load_resources():
 			gridmap.set_cell_item(Vector3i(cell.position.x, 0, cell.position.y), cell.structure, cell.orientation)
 			
 		update_cash()
+		
+		print("Prebuilt map loaded...")
 
 func spawn_citizens(count: int):
 	for i in count:
@@ -213,7 +232,7 @@ func spawn_citizens(count: int):
 		citizens.append(c)
 
 func generate_border():
-	var border = 26  # one tile outside the 50x50 play area
+	var border = 25
 	
 	for i in range(-border, border + 1):
 		# North and south edges
@@ -236,7 +255,5 @@ func generate_border():
 		place_mountain(Vector3i(border, 1, i))
 
 func place_mountain(pos: Vector3i):
-	# Use whichever index in your structures array is a rock/cliff tile
-	# Check your Inspector — count from 0 what index your rock tile is
-	var mountain_tile = 0  # ← change this to your rock/cliff tile index
+	var mountain_tile = 14
 	gridmap.set_cell_item(pos, mountain_tile)
