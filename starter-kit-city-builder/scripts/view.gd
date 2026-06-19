@@ -49,7 +49,7 @@ func handle_input(_delta):
 		camera_offset = camera_offset.lerp(Vector3.ZERO, _delta * 2.0)
 	
 	if Input.is_action_just_pressed("zoom_in"):
-		zoom = max(2, zoom - 5)
+		zoom = max(3, zoom - 5)
 	if Input.is_action_just_pressed("zoom_out"):
 		zoom = min(50, zoom + 5)
 	

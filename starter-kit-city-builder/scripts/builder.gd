@@ -13,10 +13,21 @@ var index:int = 0 # Index of structure being built
 @export var cash_display:Label
 @export var citizen_scene: PackedScene
 @export var nav_region: NavigationRegion3D
+@export var territory_mask: TerritoryMask   # Node managing the world-space reveal mask
+@export var void_plane: MeshInstance3D      # Tall wall/cylinder mesh using void_fog.tres (must be tall enough to cover camera view, NOT a flat plane)
 
 var citizens = []
 
 var plane:Plane # Used for raycasting mouse
+
+var worldSize = 25
+var interactMode = 0
+var building_mode:bool = true  # Toggle between building and movement modes
+
+# Pathfinding perf vars
+var _nav_bake_pending := false
+var _nav_bake_timer := 0.0
+const NAV_BAKE_DELAY := 0.3  # seconds to wait for more changes before baking
 
 func _ready():
 	
@@ -24,12 +35,12 @@ func _ready():
 	plane = Plane(Vector3.UP, Vector3.ZERO)
 	
 	# Generate a goofy-ahh grid of grass to start
-	for i in range(-25, 25):
-		for j in range(-25, 25):
+	for i in range(-worldSize, worldSize):
+		for j in range(-worldSize, worldSize):
 			gridmap.set_cell_item(Vector3i(i, 0, j), 12)
 	
-	# Generate mountainous border
-	generate_border()
+	# Generate border
+	# generate_border()
 	
 	# Create new MeshLibrary dynamically, can also be done in the editor
 	# See: https://docs.godotengine.org/en/stable/tutorials/3d/using_gridmaps.html
@@ -49,16 +60,54 @@ func _ready():
 		
 	gridmap.mesh_library = mesh_library
 	
+	# Keep the mask's coverage in sync with the actual playable area so you
+	# never have to manually update world_extent when worldSize changes.
+	if territory_mask != null:
+		# Add margin so the mountain border ring is also covered.
+		territory_mask.world_extent = float(worldSize) * 2.0 + 10.0
+	
+	# Set up the world-space void fog wall
+	if void_plane != null:
+		var void_material = load("res://materials/void_fog.tres") as ShaderMaterial
+		if void_material != null:
+			void_plane.material_override = void_material
+			if territory_mask != null:
+				void_material.set_shader_parameter("territory_mask", territory_mask.get_texture())
+				void_material.set_shader_parameter("world_extent", territory_mask.world_extent)
+	
+	# Reveal a small starting patch around the origin so the player doesn't spawn in fog
+	if territory_mask != null:
+		territory_mask.reveal_at(Vector2.ZERO)
+	
+	# Bake pathfinding mesh
+	if nav_region != null:
+		_request_nav_bake()
+	
 	update_structure()
 	update_cash()
-	
-	# Spawn the goofy-ahh citizens
 	spawn_citizens(5)
+	
+func _bake_nav():
+	if nav_region != null and nav_region.navigation_mesh != null:
+		nav_region.navigation_mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
+		nav_region.navigation_mesh.geometry_collision_mask = 1
 
+		var half_extent = float(worldSize) + 1.0  # small margin past the playable grid
+		nav_region.navigation_mesh.filter_baking_aabb = AABB(
+			Vector3(-half_extent, -2.0, -half_extent),
+			Vector3(half_extent * 2.0, 4.0, half_extent * 2.0)
+		)
+
+		nav_region.bake_navigation_mesh(true)
+	
+func _request_nav_bake():
+	_nav_bake_pending = true
+	_nav_bake_timer = NAV_BAKE_DELAY
+	
 func _process(delta):
 	
 	# Controls
-	
+	action_interact_mode() # Toggle between building and movement modes
 	action_rotate() # Rotates selection 90 degrees
 	action_structure_toggle() # Toggles between structures
 	
@@ -67,7 +116,6 @@ func _process(delta):
 	action_load_resources() # Loading from resources
 	
 	# Map position based on mouse
-	
 	var world_position = plane.intersects_ray(
 		view_camera.project_ray_origin(get_viewport().get_mouse_position()),
 		view_camera.project_ray_normal(get_viewport().get_mouse_position()))
@@ -77,10 +125,18 @@ func _process(delta):
 		return
 
 	var gridmap_position = Vector3(round(world_position.x), 0, round(world_position.z))
-	selector.position = lerp(selector.position, gridmap_position, min(delta * 40, 1.0))
 	
-	action_build(gridmap_position)
-	action_demolish(gridmap_position)
+	# Only show selector and process building in building mode
+	if building_mode:
+		selector.position = lerp(selector.position, gridmap_position, min(delta * 40, 1.0))
+		action_build(gridmap_position)
+		action_demolish(gridmap_position)
+	
+	if _nav_bake_pending:
+		_nav_bake_timer -= delta
+		if _nav_bake_timer <= 0.0:
+			_nav_bake_pending = false
+			_bake_nav()
 
 # Retrieve the mesh from a PackedScene, used for dynamically creating a MeshLibrary
 
@@ -112,9 +168,12 @@ func action_build(gridmap_position):
 			map.cash -= structures[index].price
 			update_cash()
 			
+			if territory_mask != null:
+				territory_mask.reveal_at(Vector2(gridmap_position.x, gridmap_position.z))
+			
 			if nav_region != null:
 				# Rebuild pathfinding mesh
-				nav_region.bake_navigation_mesh()
+				_request_nav_bake()
 			
 			Audio.play("sounds/placement-a.ogg, sounds/placement-b.ogg, sounds/placement-c.ogg, sounds/placement-d.ogg", -20)
 
@@ -127,9 +186,19 @@ func action_demolish(gridmap_position):
 			
 			if nav_region != null:
 				# Rebuild pathfinding mesh
-				nav_region.bake_navigation_mesh()
+				_request_nav_bake()
 			
 			Audio.play("sounds/removal-a.ogg, sounds/removal-b.ogg, sounds/removal-c.ogg, sounds/removal-d.ogg", -20)
+
+# Toggle between building mode and movement mode
+
+func action_interact_mode():
+	if InputMap.has_action("interact_mode") and Input.is_action_just_pressed("interact_mode"):
+		building_mode = !building_mode
+		selector_container.visible = building_mode
+		print("Mode switched to: " + ("Building" if building_mode else "Movement"))
+		if Audio:
+			Audio.play("sounds/toggle.ogg", -30)
 
 # Rotates the 'cursor' 90 degrees
 
@@ -232,27 +301,26 @@ func spawn_citizens(count: int):
 		citizens.append(c)
 
 func generate_border():
-	var border = 25
 	
-	for i in range(-border, border + 1):
+	for i in range(-worldSize, worldSize + 1):
 		# North and south edges
-		place_mountain(Vector3i(i, 0, -border))
-		place_mountain(Vector3i(i, 0, border))
+		place_mountain(Vector3i(i, 0, -worldSize))
+		place_mountain(Vector3i(i, 0, worldSize))
 		# East and west edges
-		place_mountain(Vector3i(-border, 0, i))
-		place_mountain(Vector3i(border, 0, i))
+		place_mountain(Vector3i(-worldSize, 0, i))
+		place_mountain(Vector3i(worldSize, 0, i))
 
 		# Double up the ring for a thicker mountain range
-		place_mountain(Vector3i(i, 0, -border - 1))
-		place_mountain(Vector3i(i, 0, border + 1))
-		place_mountain(Vector3i(-border - 1, 0, i))
-		place_mountain(Vector3i(border + 1, 0, i))
+		place_mountain(Vector3i(i, 0, -worldSize - 1))
+		place_mountain(Vector3i(i, 0, worldSize + 1))
+		place_mountain(Vector3i(-worldSize - 1, 0, i))
+		place_mountain(Vector3i(worldSize + 1, 0, i))
 
 		# Add a second height layer for visual depth
-		place_mountain(Vector3i(i, 1, -border))
-		place_mountain(Vector3i(i, 1, border))
-		place_mountain(Vector3i(-border, 1, i))
-		place_mountain(Vector3i(border, 1, i))
+		place_mountain(Vector3i(i, 1, -worldSize))
+		place_mountain(Vector3i(i, 1, worldSize))
+		place_mountain(Vector3i(-worldSize, 1, i))
+		place_mountain(Vector3i(worldSize, 1, i))
 
 func place_mountain(pos: Vector3i):
 	var mountain_tile = 14
