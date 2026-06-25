@@ -29,4 +29,4 @@ jobs:
           CHANNEL: html5
           ITCH_GAME: civilisation-simulator
           ITCH_USER: mu-gua-here
-          PACKAGE: ./build/web
+          PACKAGE: ./starter-kit-city-builder/build/web
