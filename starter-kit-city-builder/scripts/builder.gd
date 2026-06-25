@@ -13,21 +13,21 @@ var index:int = 0 # Index of structure being built
 @export var cash_display:Label
 @export var citizen_scene: PackedScene
 @export var nav_region: NavigationRegion3D
-@export var territory_mask: TerritoryMask   # Node managing the world-space reveal mask
-@export var void_plane: MeshInstance3D      # Tall wall/cylinder mesh using void_fog.tres (must be tall enough to cover camera view, NOT a flat plane)
 
 var citizens = []
 
 var plane:Plane # Used for raycasting mouse
 
 var worldSize = 25
-var interactMode = 0
-var building_mode:bool = true  # Toggle between building and movement modes
+var interact_mode:bool = true  # Toggle between building and movement modes
 
 # Pathfinding perf vars
 var _nav_bake_pending := false
 var _nav_bake_timer := 0.0
 const NAV_BAKE_DELAY := 0.3  # seconds to wait for more changes before baking
+
+# UI
+var hotbar_page: int = 0  # which page of 10 structure slots the player is on
 
 func _ready():
 	
@@ -38,6 +38,9 @@ func _ready():
 	for i in range(-worldSize, worldSize):
 		for j in range(-worldSize, worldSize):
 			gridmap.set_cell_item(Vector3i(i, 0, j), 12)
+	
+	# Save starting scene so won't be empty
+	action_save()
 	
 	# Generate border
 	# generate_border()
@@ -60,32 +63,13 @@ func _ready():
 		
 	gridmap.mesh_library = mesh_library
 	
-	# Keep the mask's coverage in sync with the actual playable area so you
-	# never have to manually update world_extent when worldSize changes.
-	if territory_mask != null:
-		# Add margin so the mountain border ring is also covered.
-		territory_mask.world_extent = float(worldSize) * 2.0 + 10.0
-	
-	# Set up the world-space void fog wall
-	if void_plane != null:
-		var void_material = load("res://materials/void_fog.tres") as ShaderMaterial
-		if void_material != null:
-			void_plane.material_override = void_material
-			if territory_mask != null:
-				void_material.set_shader_parameter("territory_mask", territory_mask.get_texture())
-				void_material.set_shader_parameter("world_extent", territory_mask.world_extent)
-	
-	# Reveal a small starting patch around the origin so the player doesn't spawn in fog
-	if territory_mask != null:
-		territory_mask.reveal_at(Vector2.ZERO)
-	
 	# Bake pathfinding mesh
 	if nav_region != null:
 		_request_nav_bake()
 	
 	update_structure()
 	update_cash()
-	spawn_citizens(5)
+	spawn_citizens(100)
 	
 func _bake_nav():
 	if nav_region != null and nav_region.navigation_mesh != null:
@@ -127,7 +111,7 @@ func _process(delta):
 	var gridmap_position = Vector3(round(world_position.x), 0, round(world_position.z))
 	
 	# Only show selector and process building in building mode
-	if building_mode:
+	if interact_mode:
 		selector.position = lerp(selector.position, gridmap_position, min(delta * 40, 1.0))
 		action_build(gridmap_position)
 		action_demolish(gridmap_position)
@@ -168,9 +152,6 @@ func action_build(gridmap_position):
 			map.cash -= structures[index].price
 			update_cash()
 			
-			if territory_mask != null:
-				territory_mask.reveal_at(Vector2(gridmap_position.x, gridmap_position.z))
-			
 			if nav_region != null:
 				# Rebuild pathfinding mesh
 				_request_nav_bake()
@@ -194,9 +175,10 @@ func action_demolish(gridmap_position):
 
 func action_interact_mode():
 	if InputMap.has_action("interact_mode") and Input.is_action_just_pressed("interact_mode"):
-		building_mode = !building_mode
-		selector_container.visible = building_mode
-		print("Mode switched to: " + ("Building" if building_mode else "Movement"))
+		interact_mode = !interact_mode
+		selector_container.visible = interact_mode
+		selector.visible = interact_mode
+		print("Mode switched to: " + ("Building" if interact_mode else "Movement"))
 		if Audio:
 			Audio.play("sounds/toggle.ogg", -30)
 
@@ -211,12 +193,22 @@ func action_rotate():
 # Toggle between structures to build
 
 func action_structure_toggle():
-	if Input.is_action_just_pressed("structure_next"):
-		index = wrap(index + 1, 0, structures.size())
+	# Direct hotbar select: keys 1-9, 0 map to slots 0-9 of the current page
+	var page_count = ceili(float(structures.size()) / 10.0)
+	for i in range(10):
+		if Input.is_action_just_pressed("selection_%d" % i):
+			var target = hotbar_page * 10 + i
+			if target < structures.size():
+				index = target
+				Audio.play("sounds/toggle.ogg", -30)
+
+	# Page through the hotbar when there are more than 10 structures
+	if Input.is_action_just_pressed("hotbar_page_next"):
+		hotbar_page = wrap(hotbar_page + 1, 0, page_count)
 		Audio.play("sounds/toggle.ogg", -30)
-	
-	if Input.is_action_just_pressed("structure_previous"):
-		index = wrap(index - 1, 0, structures.size())
+
+	if Input.is_action_just_pressed("hotbar_page_prev"):
+		hotbar_page = wrap(hotbar_page - 1, 0, page_count)
 		Audio.play("sounds/toggle.ogg", -30)
 
 	update_structure()
@@ -227,7 +219,7 @@ func update_structure():
 	# Clear previous structure preview in selector
 	for n in selector_container.get_children():
 		selector_container.remove_child(n)
-		
+	
 	# Create new structure preview in selector
 	var _model = structures[index].model.instantiate()
 	selector_container.add_child(_model)
@@ -271,6 +263,10 @@ func action_load():
 			
 		update_cash()
 		
+		if nav_region != null:
+			# Rebuild pathfinding mesh
+			_request_nav_bake()
+		
 		print("Map loaded.")
 
 func action_load_resources():
@@ -287,6 +283,10 @@ func action_load_resources():
 			
 		update_cash()
 		
+		if nav_region != null:
+			# Rebuild pathfinding mesh
+			_request_nav_bake()
+		
 		print("Prebuilt map loaded...")
 
 func spawn_citizens(count: int):
@@ -301,7 +301,6 @@ func spawn_citizens(count: int):
 		citizens.append(c)
 
 func generate_border():
-	
 	for i in range(-worldSize, worldSize + 1):
 		# North and south edges
 		place_mountain(Vector3i(i, 0, -worldSize))

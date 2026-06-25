@@ -1,9 +1,0 @@
-[gd_resource type="ShaderMaterial" format=3]
-
-[ext_resource type="Shader" uid="uid://omvn66py35n0" path="res://shaders/void_fog.gdshader" id="1"]
-
-[resource]
-shader = ExtResource("1")
-shader_parameter/world_extent = 80.0
-shader_parameter/void_color = Color(0.78, 0.85, 0.92, 1)
-shader_parameter/void_alpha = 1.0
