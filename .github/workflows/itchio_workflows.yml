@@ -22,13 +22,6 @@ jobs:
           relative_project_path: ./starter-kit-city-builder
           export_debug: false
 
-      - name: Debug - list export output
-        run: |
-          echo "--- contents of starter-kit-city-builder ---"
-          find ./starter-kit-city-builder -maxdepth 3 -type d
-          echo "--- looking for index.html anywhere ---"
-          find . -iname "index.html"
-
       - name: Push to itch.io
         uses: yeslayla/butler-publish-itchio-action@master
         env:
