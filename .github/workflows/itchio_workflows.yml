@@ -21,6 +21,7 @@ jobs:
 
           relative_project_path: ./starter-kit-city-builder
           export_debug: false
+          use_preset_export_path: true
 
       - name: Push to itch.io
         uses: yeslayla/butler-publish-itchio-action@master
