@@ -7,3 +7,4 @@
 script = ExtResource("2_wqyte")
 model = ExtResource("1_r2n53")
 price = 10
+happiness_bonus = 8.0

@@ -16,6 +16,8 @@ var index:int = 0 # Index of structure being built
 
 var citizens = []
 
+var buildings: Dictionary = {} # Vector3i (cell) -> BuildingInstance, for placed HOUSE/SHOP/WORKPLACE structures
+
 var plane:Plane # Used for raycasting mouse
 
 var worldSize = 25
@@ -30,6 +32,8 @@ const NAV_BAKE_DELAY := 0.3  # seconds to wait for more changes before baking
 var hotbar_page: int = 0  # which page of 10 structure slots the player is on
 
 func _ready():
+	
+	add_to_group("builder")
 	
 	map = DataMap.new()
 	plane = Plane(Vector3.UP, Vector3.ZERO)
@@ -66,6 +70,7 @@ func _ready():
 	update_structure()
 	update_cash()
 	spawn_citizens(5)
+	_rebuild_buildings()
 	
 func _bake_nav():
 	if nav_region != null and nav_region.navigation_mesh != null:
@@ -148,6 +153,8 @@ func action_build(gridmap_position):
 			map.cash -= structures[index].price
 			update_cash()
 			
+			_rebuild_buildings()
+			
 			if nav_region != null:
 				# Rebuild pathfinding mesh
 				_request_nav_bake()
@@ -160,6 +167,8 @@ func action_demolish(gridmap_position):
 	if Input.is_action_just_pressed("demolish"):
 		if gridmap.get_cell_item(gridmap_position) != -1:
 			gridmap.set_cell_item(gridmap_position, -1)
+			
+			_rebuild_buildings()
 			
 			if nav_region != null:
 				# Rebuild pathfinding mesh
@@ -259,6 +268,8 @@ func action_load():
 			
 		update_cash()
 		
+		_rebuild_buildings()
+		
 		if nav_region != null:
 			# Rebuild pathfinding mesh
 			_request_nav_bake()
@@ -279,6 +290,8 @@ func action_load_resources():
 			
 		update_cash()
 		
+		_rebuild_buildings()
+		
 		if nav_region != null:
 			# Rebuild pathfinding mesh
 			_request_nav_bake()
@@ -296,3 +309,96 @@ func spawn_citizens(count: int):
 func place_mountain(pos: Vector3i):
 	var mountain_tile = 14
 	gridmap.set_cell_item(pos, mountain_tile)
+
+# --- Building occupancy (housing / jobs) ---------------------------------
+
+# Rebuild the buildings dictionary from the current gridmap state.
+func _rebuild_buildings() -> void:
+	var old_buildings = buildings
+	buildings = {}
+	
+	for cell in gridmap.get_used_cells():
+		var structure_index = gridmap.get_cell_item(cell)
+		if structure_index < 0 or structure_index >= structures.size():
+			continue
+		
+		var structure = structures[structure_index]
+		var is_housing = structure.type == Structure.Type.HOUSE or structure.type == Structure.Type.SHOP
+		var is_workplace = structure.type == Structure.Type.WORKPLACE
+		
+		if not is_housing and not is_workplace:
+			continue # purely decorative, nothing to track
+		
+		var instance: BuildingInstance
+		if old_buildings.has(cell) and old_buildings[cell].structure_index == structure_index:
+			# Same structure still here -- keep its existing occupants
+			instance = old_buildings[cell]
+		else:
+			# New building, or the structure at this cell changed -- start fresh.
+			instance = BuildingInstance.new()
+			instance.cell = cell
+			instance.structure_index = structure_index
+		
+		buildings[cell] = instance
+
+# Check if citizen has a home
+func has_housing_for(citizen: Node) -> bool:
+	var citizen_id: String = citizen.data.id
+	
+	# Already holds a valid slot somewhere?
+	for instance in buildings.values():
+		if citizen_id in instance.residents:
+			return true
+	
+	# Look for a building with a free residential slot
+	for instance in buildings.values():
+		var structure = structures[instance.structure_index]
+		if structure.residential_floors <= 0:
+			continue
+		if instance.residents.size() < structure.residential_floors:
+			instance.residents.append(citizen_id)
+			return true
+	
+	return false
+
+# Check citizen's job
+func request_job(citizen: Node) -> String:
+	var citizen_id: String = citizen.data.id
+	
+	# Already holds a job somewhere?
+	for instance in buildings.values():
+		if citizen_id in instance.workers:
+			return structures[instance.structure_index].model.resource_path.get_file().get_basename()
+	
+	# Look for a workplace with a free job slot
+	for instance in buildings.values():
+		var structure = structures[instance.structure_index]
+		if structure.type != Structure.Type.WORKPLACE:
+			continue
+		if instance.workers.size() < structure.capacity:
+			instance.workers.append(citizen_id)
+			return structure.model.resource_path.get_file().get_basename()
+	
+	return ""
+
+# Releases any housing/job slot held by this citizen id
+func release_citizen(citizen_id: String) -> void:
+	for instance in buildings.values():
+		instance.residents.erase(citizen_id)
+		instance.workers.erase(citizen_id)
+
+# Finds the nearest placed structure of a given type to a world position.
+func get_nearest_structure_of_type(pos: Vector3, type: Structure.Type) -> Vector3:
+	var nearest_pos := Vector3.INF
+	var nearest_dist := INF
+	
+	for instance in buildings.values():
+		if structures[instance.structure_index].type != type:
+			continue
+		var world_pos = Vector3(instance.cell.x, instance.cell.y, instance.cell.z)
+		var dist = pos.distance_squared_to(world_pos)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest_pos = world_pos
+	
+	return nearest_pos

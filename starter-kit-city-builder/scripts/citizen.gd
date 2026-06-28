@@ -36,11 +36,17 @@ var attack_cooldown: float = 0.0
 
 var happiness_material: StandardMaterial3D
 
+var builder: Node = null
+var needs_check_timer: float = 0.0
+const NEEDS_CHECK_INTERVAL := 2.0 # how often to retry claiming housing/a job if still missing one
+var _has_housing: bool = false
+
 func _ready():
 	if data == null:
 		data = CitizenData.new()
 		
 	add_to_group("citizen")
+	builder = get_tree().get_first_node_in_group("builder")
 		
 	call_deferred("set_new_destination", Vector3(
 		randf_range(-20, 20),
@@ -53,10 +59,22 @@ func _ready():
 	mesh_instance.set_surface_override_material(0, happiness_material)
 	update_happiness_color()
 
+func _exit_tree():
+	if builder and builder.has_method("release_citizen") and data:
+		builder.release_citizen(data.id)
+
 func _physics_process(delta):
 	# Gravity
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+	
+	# Periodically try to claim housing/a job if we don't have one yet.
+	# Cheap to skip most frames since this only matters when something changed
+	# (a new building went up) or on first spawn.
+	needs_check_timer -= delta
+	if needs_check_timer <= 0.0:
+		needs_check_timer = NEEDS_CHECK_INTERVAL
+		_refresh_housing_and_job()
 	
 	# Update citizen stats
 	if data.job == "":
@@ -66,7 +84,12 @@ func _physics_process(delta):
 	
 	data.job_satisfaction = clamp(data.job_satisfaction, 0.0, 100.0)
 	
-	data.happiness = clamp(50 - (100 - data.hunger) * 0.005 + (data.job_satisfaction * 0.01 if data.job != "" else -data.job_satisfaction * 0.01), 0, 100)
+	# Housing satisfaction eases toward 100 if housed, 0 if not -- a citizen
+	# sleeping in the street should feel it, but not flip instantly.
+	var housing_target = 100.0 if _has_housing else 0.0
+	data.housing_satisfaction = move_toward(data.housing_satisfaction, housing_target, delta * 20.0)
+	
+	data.happiness = clamp(50 - (100 - data.hunger) * 0.005 + (data.job_satisfaction * 0.01 if data.job != "" else -data.job_satisfaction * 0.01) + (data.housing_satisfaction - 50.0) * 0.1, 0, 100)
 	update_happiness_color()
 	
 	actual_speed = BASE_SPEED + (100 - data.happiness) / 100
@@ -141,6 +164,18 @@ func _physics_process(delta):
 func _on_velocity_computed(safe_velocity: Vector3):
 	velocity.x = safe_velocity.x
 	velocity.z = safe_velocity.z
+
+func _refresh_housing_and_job() -> void:
+	if builder == null:
+		return
+	
+	if builder.has_method("has_housing_for"):
+		_has_housing = builder.has_housing_for(self)
+	
+	if data.job == "" and builder.has_method("request_job"):
+		var job_name = builder.request_job(self)
+		if job_name != "":
+			data.job = job_name
 
 func set_new_destination(target):
 	# Pick a random point on the grid

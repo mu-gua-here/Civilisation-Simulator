@@ -7,3 +7,5 @@
 script = ExtResource("2_jrinw")
 model = ExtResource("1_gyclk")
 price = 70
+type = 2
+capacity = 4

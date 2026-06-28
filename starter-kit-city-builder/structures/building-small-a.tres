@@ -7,3 +7,5 @@
 script = ExtResource("2_q3i1h")
 model = ExtResource("1_v5apy")
 price = 50
+type = 1
+residential_floors = 2

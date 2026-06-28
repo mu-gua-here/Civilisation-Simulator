@@ -7,11 +7,16 @@ var camera_rotation:Vector3
 @onready var copy_target := $SpringArm3D/CopyMe as Marker3D
 @onready var camera := $Camera as Camera3D
 
+@export var max_zoom := 50.0
+@export var min_zoom := 1.0
+@export var scroll_zoom_speed := 2.0
+
+# Viewing
 @export_range(0.0, 1.0) var mouse_sensitivity = 0.01
-@export var max_tilt_limit = -5.0
-@export var min_tilt_limit = -90.0
-@export var arm_greater_threshold = 20.0
-@export var arm_less_threshold = 4.0
+@export var max_tilt_limit := 0.0
+@export var min_tilt_limit := -90.0
+@export var arm_greater_threshold := 10.0
+@export var arm_less_threshold := 2.0
 
 var zoom:float = 5.0
 
@@ -48,7 +53,7 @@ func _process(delta):
 	camera.global_position = camera.global_position.lerp(copy_target.global_position, delta * 10.0)
 	camera.global_rotation = copy_target.global_rotation
 	
-	# Only use SpringArm's results if zoom is within range
+	# Enable/Disable SpringArm if zoom is within range
 	if zoom > arm_less_threshold and zoom < arm_greater_threshold:
 		spring_arm.collision_mask = 1
 	else:
@@ -91,9 +96,9 @@ func handle_input(_delta):
 	
 	# Discrete zoom (for mouse users, mouse wheel up/down)
 	if Input.is_action_just_pressed("zoom_in"):
-		zoom = max(3, zoom - 5)
+		zoom = max(min_zoom, zoom - scroll_zoom_speed)
 	if Input.is_action_just_pressed("zoom_out"):
-		zoom = min(50, zoom + 5)
+		zoom = min(max_zoom, zoom + scroll_zoom_speed)
 	
 	# Continuous zoom (keyboard +/-)
 	var zoom_axis = Input.get_axis("zoom_in_hold", "zoom_out_hold")

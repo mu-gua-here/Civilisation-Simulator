@@ -17,7 +17,7 @@ mono_crash.*.json
 
 # Additional tools
 .ziva/
-addons/ziva-agent/
+addons/ziva_agent/
 
 # Miscellaneous
 *.DS_Store

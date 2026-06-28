@@ -135,7 +135,7 @@ transform = Transform3D(0.099999994, -3.7252903e-09, 3.7252903e-09, 0, 0.1000000
 script = ExtResource("26_2wyq8")
 
 [node name="Sprite3D" type="Sprite3D" parent="Player" unique_id=1388871682]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8083644, 0)
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 1.8083644, 0)
 billboard = 1
 texture = SubResource("ViewportTexture_yq6so")
 
