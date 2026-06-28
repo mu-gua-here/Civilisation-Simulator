@@ -1,5 +1,4 @@
 extends CharacterBody3D
-class_name Citizen
 
 # Movement settings
 const BASE_SPEED = 0.5
@@ -33,16 +32,6 @@ var attack_cooldown: float = 0.0
 @onready var nav_agent = $NavigationAgent3D
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 
-# CITIZEN GAME LOGIC ATTRIBUTES
-class CitizenData extends Resource:
-	@export var citizen_id: String = ""
-	@export var name: String = ""
-	@export var age: int = randi_range(2, 100)
-	@export var health: float = 100.0
-	@export var hunger: float = 0.0
-	@export var job: String = ""
-	@export var happiness: float = 50.0
-
 @export var data: CitizenData
 
 var happiness_material: StandardMaterial3D
@@ -69,9 +58,15 @@ func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 	
-	# Happiness drains over time
-	data.happiness -= delta * 2.0
-	data.happiness = clamp(data.happiness, 0.0, 100.0)
+	# Update citizen stats
+	if data.job == "":
+		data.job_satisfaction -= 10 * delta
+	else:
+		data.job_satisfaction += randf_range(0.0, 0.01)
+	
+	data.job_satisfaction = clamp(data.job_satisfaction, 0.0, 100.0)
+	
+	data.happiness = clamp(50 - (100 - data.hunger) * 0.005 + (data.job_satisfaction * 0.01 if data.job != "" else -data.job_satisfaction * 0.01), 0, 100)
 	update_happiness_color()
 	
 	actual_speed = BASE_SPEED + (100 - data.happiness) / 100
@@ -79,6 +74,8 @@ func _physics_process(delta):
 	
 	if data.happiness < 0.1:
 		is_chasing_player = true
+	elif data.happiness > 10.0:
+		is_chasing_player = false
 	
 	if is_chasing_player:
 		chase_repath_timer -= delta
@@ -94,7 +91,8 @@ func _physics_process(delta):
 	# Wander timer
 	wander_timer -= delta
 	if is_on_floor() and wander_timer > 0:
-		velocity.y = JUMP_HEIGHT
+		if data.hunger > 0.0:
+			velocity.y = JUMP_HEIGHT
 	else:
 		wander_timer = randf_range(0, 2) * (100 - data.happiness)
 		idle_timer -= delta
@@ -105,8 +103,8 @@ func _physics_process(delta):
 				randf_range(-20, 20)
 			))
 			idle_timer = clamp(data.happiness, 180, 6000)	
-
-	if not nav_agent.is_navigation_finished():
+	
+	if not nav_agent.is_navigation_finished() and data.hunger > 0.0:
 		var next = nav_agent.get_next_path_position()
 		var direction = (next - global_position).normalized()
 		var desired_velocity = Vector3(direction.x * actual_speed, velocity.y, direction.z * actual_speed)
@@ -117,7 +115,10 @@ func _physics_process(delta):
 	else:
 		velocity.x = move_toward(velocity.x, 0, actual_speed)
 		velocity.z = move_toward(velocity.z, 0, actual_speed)
-
+	
+	data.hunger -= (data.metabolism + data.metabolism * velocity.length()) * 0.01
+	data.hunger = clamp(data.hunger, 0, 100)
+	
 	move_and_slide()
 	
 	# Real physical collision check — did we actually touch the player this frame?

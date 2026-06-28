@@ -66,6 +66,8 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	
+	update_stat_bars()
+	
 	if position.y < -10:
 		velocity = Vector3.ZERO
 		position = Vector3i(0, 1, 0)
@@ -97,9 +99,9 @@ func update_stat_bars():
 		stat_bars_display.visible = false
 		stat_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		return
-		
-	hunger_bar.value = Globals.player.hunger
-	health_bar.value = Globals.player.health
+	
+	hunger_bar.value = Globals.player_hunger
+	health_bar.value = Globals.player_health
 
 func _on_death() -> void:
 	# Placeholder — hook up a respawn/game-over screen later

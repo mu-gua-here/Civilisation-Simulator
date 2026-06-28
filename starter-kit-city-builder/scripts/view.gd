@@ -3,11 +3,19 @@ extends Node3D
 var camera_position:Vector3
 var camera_rotation:Vector3
 
+@onready var spring_arm := $SpringArm3D as SpringArm3D
+@onready var copy_target := $SpringArm3D/CopyMe as Marker3D
+@onready var camera := $Camera as Camera3D
+
+@export_range(0.0, 1.0) var mouse_sensitivity = 0.01
+@export var max_tilt_limit = -5.0
+@export var min_tilt_limit = -90.0
+@export var arm_greater_threshold = 20.0
+@export var arm_less_threshold = 4.0
+
 var zoom:float = 5.0
 
 var camera_offset := Vector3.ZERO
-
-@onready var camera = $Camera
 
 # Keyboard camera rotation controls
 var rotate_speed: float = 0.0  # current angular speed (ramps up while held)
@@ -21,20 +29,30 @@ func get_player_position() -> Vector3:
 	if player:
 		return player.global_position
 	return Vector3.ZERO
-	
+
 func _ready():
 	camera_rotation = rotation_degrees # Initial rotation
 	add_to_group("view")
-	pass
+	camera.global_transform = copy_target.global_transform
+	camera.make_current()
 
 func _process(delta):
 	# Set position and rotation to targets
 	position = position.lerp(camera_position, delta * 8)
 	rotation_degrees = rotation_degrees.lerp(camera_rotation, delta * 6)
 	
-	# Smoothly update zoom
+	# SpringArm3D positions CopyMe instantly every physics frame
+	# So can interpolate camera zoom here
 	
-	camera.position = camera.position.lerp(Vector3(0, 0, zoom), delta * 8)
+	spring_arm.spring_length = zoom
+	camera.global_position = camera.global_position.lerp(copy_target.global_position, delta * 10.0)
+	camera.global_rotation = copy_target.global_rotation
+	
+	# Only use SpringArm's results if zoom is within range
+	if zoom > arm_less_threshold and zoom < arm_greater_threshold:
+		spring_arm.collision_mask = 1
+	else:
+		spring_arm.collision_mask = 0
 	
 	handle_input(delta)
 
@@ -59,6 +77,7 @@ func handle_input(_delta):
 		camera_offset = camera_offset.lerp(Vector3.ZERO, _delta * 2.0)
 	
 	# Keyboard/gamepad camera turn (Q/E)
+	## NOTE: PROBLEM: DISORIENTED WHEN PLAYER FACE DIFF DIRS
 	var turn = Input.get_axis("camera_turn_right", "camera_turn_left")
 	if turn != 0:
 		rotate_speed = move_toward(rotate_speed, turn * ROTATE_MAX_SPEED, ROTATE_ACCEL * _delta)
@@ -67,8 +86,6 @@ func handle_input(_delta):
 
 	if rotate_speed != 0.0:
 		camera_rotation.y -= rotate_speed * _delta
-
-	camera_position = get_player_position() + camera_offset
 	
 	# CAMERA ZOOMING
 	
@@ -87,12 +104,15 @@ func handle_input(_delta):
 	camera_position = get_player_position() + camera_offset
 
 func _input(event):
+	
 	# Mouse drag rotation
+	# NOTE: PROBLEM: camera_rotate needs a key/trackpad alternative
 	if event is InputEventMouseMotion:
 		if Input.is_action_pressed("camera_rotate"):
-			camera_rotation += Vector3(0, -event.relative.x / 10, 0)
+			camera_rotation += Vector3(-event.relative.y / 10, -event.relative.x / 10, 0)
+			camera_rotation.x = clamp(camera_rotation.x, min_tilt_limit, max_tilt_limit)
 
-	# Trackpad: two-finger swipe rotates camera, no key held needed
+	# Trackpad: two-finger swipe rotates camera
 	elif event is InputEventPanGesture:
 		camera_rotation.y -= event.delta.x * 1.5
 

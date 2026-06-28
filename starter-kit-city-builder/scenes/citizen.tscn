@@ -75,6 +75,7 @@ disable_3d = true
 transparent_bg = true
 
 [node name="VBoxContainer" type="VBoxContainer" parent="SubViewport" unique_id=2035817658]
+visible = false
 anchors_preset = 14
 anchor_top = 0.5
 anchor_right = 1.0

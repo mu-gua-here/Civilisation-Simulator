@@ -42,9 +42,6 @@ func _ready():
 	# Save starting scene so won't be empty
 	action_save()
 	
-	# Generate border
-	# generate_border()
-	
 	# Create new MeshLibrary dynamically, can also be done in the editor
 	# See: https://docs.godotengine.org/en/stable/tutorials/3d/using_gridmaps.html
 	
@@ -59,8 +56,7 @@ func _ready():
 		mesh_library.set_item_mesh_transform(id, Transform3D())
 		
 		mesh_library.set_item_shapes(id, [get_collision_shape(structure.model), Transform3D()])
-
-		
+	
 	gridmap.mesh_library = mesh_library
 	
 	# Bake pathfinding mesh
@@ -69,7 +65,7 @@ func _ready():
 	
 	update_structure()
 	update_cash()
-	spawn_citizens(100)
+	spawn_citizens(5)
 	
 func _bake_nav():
 	if nav_region != null and nav_region.navigation_mesh != null:
@@ -293,33 +289,9 @@ func spawn_citizens(count: int):
 	for i in count:
 		var c = citizen_scene.instantiate()
 		add_child(c)
-		c.global_position = Vector3(
-			randf_range(-20, 20),
-			1.0,
-			randf_range(-20, 20)
-			)
+		c.global_position = Vector3(randf_range(-20, 20), 1.0, randf_range(-20, 20))
+		c.data.id = "%06d" % randi_range(0, 999999)
 		citizens.append(c)
-
-func generate_border():
-	for i in range(-worldSize, worldSize + 1):
-		# North and south edges
-		place_mountain(Vector3i(i, 0, -worldSize))
-		place_mountain(Vector3i(i, 0, worldSize))
-		# East and west edges
-		place_mountain(Vector3i(-worldSize, 0, i))
-		place_mountain(Vector3i(worldSize, 0, i))
-
-		# Double up the ring for a thicker mountain range
-		place_mountain(Vector3i(i, 0, -worldSize - 1))
-		place_mountain(Vector3i(i, 0, worldSize + 1))
-		place_mountain(Vector3i(-worldSize - 1, 0, i))
-		place_mountain(Vector3i(worldSize + 1, 0, i))
-
-		# Add a second height layer for visual depth
-		place_mountain(Vector3i(i, 1, -worldSize))
-		place_mountain(Vector3i(i, 1, worldSize))
-		place_mountain(Vector3i(-worldSize, 1, i))
-		place_mountain(Vector3i(worldSize, 1, i))
 
 func place_mountain(pos: Vector3i):
 	var mountain_tile = 14

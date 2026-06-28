@@ -26,6 +26,7 @@ config/icon="res://icon.png"
 
 Audio="*res://scripts/audio.gd"
 Globals="*uid://menlh8q7i3t4"
+NameGenerator="*uid://dafqumavpoyr"
 
 [display]
 

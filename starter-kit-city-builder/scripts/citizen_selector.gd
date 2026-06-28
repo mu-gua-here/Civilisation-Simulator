@@ -12,6 +12,7 @@ class_name CitizenSelector
 var selected_citizen: Node3D = null
 var panel: PanelContainer
 var name_label: Label
+var id_label: Label
 var stats_label: RichTextLabel
 var ui_layer: CanvasLayer
 var ring: MeshInstance3D
@@ -71,8 +72,7 @@ func _process(_delta: float) -> void:
 		_deselect()
 
 func _update_ring_position() -> void:
-	# Flat ring sitting just above the ground at the citizen's feet, always
-	# flat (no billboarding needed -- a ground ring reads fine from any angle).
+	# Flat ring sitting just above the ground at the citizen's feet
 	ring.global_position = selected_citizen.global_position + Vector3(0, 0.05, 0)
 
 func _update_panel_position() -> void:
@@ -81,8 +81,7 @@ func _update_panel_position() -> void:
 	
 	var screen_pos = view_camera.unproject_position(selected_citizen.global_position)
 	
-	# Don't show the panel if the citizen is behind the camera (unproject_position
-	# can return a misleading on-screen point in that case).
+	# Don't show the panel if the citizen is behind the camera
 	var cam_to_citizen = selected_citizen.global_position - view_camera.global_position
 	if view_camera.global_transform.basis.z.dot(cam_to_citizen) > 0:
 		panel.visible = false
@@ -91,10 +90,7 @@ func _update_panel_position() -> void:
 	
 	var target_pos = screen_pos + panel_offset
 	
-	# Clamp so the panel stays fully on-screen even if the citizen wanders
-	# near a viewport edge. panel.size can be (0,0) for a single frame right
-	# after becoming visible (before layout runs), so fall back to the
-	# minimum size in that case to avoid a one-frame jump to the corner.
+	# Clamp so the panel stays fully on-screen even if the citizen wanders near a viewport edge
 	var panel_size = panel.size if panel.size.length_squared() > 1.0 else panel.custom_minimum_size
 	var viewport_size = get_viewport().get_visible_rect().size
 	target_pos.x = clamp(target_pos.x, 0, viewport_size.x - panel_size.x)
@@ -107,7 +103,8 @@ func _refresh_panel() -> void:
 	if d == null:
 		return
 	
-	name_label.text = d.name if d.name != "" else "Citizen"
+	name_label.text = d.citizen_name if d.citizen_name != "" else "Unnamed citizen"
+	id_label.text = "Citizen ID: " + d.id if d.id != "" else "No ID"
 	
 	var job_text = d.job if d.job != "" else "Unemployed"
 	var happiness_pct = int(clamp(d.happiness, 0.0, 100.0))
@@ -164,6 +161,10 @@ func _build_ui() -> void:
 	name_label.add_theme_font_size_override("font_size", 32)
 	vbox.add_child(name_label)
 	
+	id_label = Label.new()
+	id_label.add_theme_font_size_override("font_size", 22)
+	vbox.add_child(id_label)
+	
 	var sep = HSeparator.new()
 	vbox.add_child(sep)
 	
@@ -177,8 +178,8 @@ func _build_ui() -> void:
 	vbox.add_child(stats_label)
 
 func _build_ring() -> void:
-	# Flat circular outline on the ground beneath the selected citizen.
-	# Built from a TorusMesh flattened on Y so it reads as a ring, not a donut.
+	# Flat circular outline on the ground beneath the selected citizen
+	# Built from a TorusMesh flattened on Y so it reads as a ring
 	var torus = TorusMesh.new()
 	torus.inner_radius = 0.55
 	torus.outer_radius = 0.7
