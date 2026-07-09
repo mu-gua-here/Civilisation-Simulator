@@ -12,16 +12,8 @@ var is_chasing_player: bool = false
 var chase_repath_timer := 0.0
 const CHASE_REPATH_INTERVAL := 0.25
 
-# STAT BARS
-# Resources
-@onready var stat_bars_display: Sprite3D = $Sprite3D
-@onready var hunger_bar: ProgressBar = $SubViewport/VBoxContainer/HungerBar
-@onready var happiness_bar: ProgressBar = $SubViewport/VBoxContainer/HappinessBar
-@onready var health_bar: ProgressBar = $SubViewport/VBoxContainer/HealthBar
-@onready var stat_viewport: SubViewport = $SubViewport
-
-# Settings
-const BAR_VISIBLE_DISTANCE := 3.0
+# Distance a citizen needs to be from a gatherable/build cell to start contributing
+const WORK_REACH := 1.5
 
 # Attack settings (only relevant while is_chasing_player is true)
 @export var attack_damage: float = 10.0
@@ -37,14 +29,29 @@ var attack_cooldown: float = 0.0
 var happiness_material: StandardMaterial3D
 
 var builder: Node = null
-var needs_check_timer: float = 0.0
-const NEEDS_CHECK_INTERVAL := 2.0 # how often to retry claiming housing/a job if still missing one
+var housing_check_timer: float = 0.0
+const HOUSING_CHECK_INTERVAL := 2.0 # how often to re-derive housing status from builder.buildings
 var _has_housing: bool = false
+
+var is_gathering: bool = false
+const NO_CELL := Vector3i(NAN, NAN, NAN)
+var gather_target_cell: Vector3i = NO_CELL
+
+# Building (A.4) -- entered only via explicit assignment (manual click for now)
+var is_building: bool = false
+var build_target_cell: Vector3i = NO_CELL
+
+# Carrying gathered resources back to a construction site (#4 -- resources no
+# longer auto-add to the stockpile on gather; a citizen physically carries
+# what they chopped until they can hand it off via Builder.deposit_resources()).
+var carried_resources: Dictionary = {}
+var is_delivering: bool = false
+var deliver_target_cell: Vector3i = NO_CELL
 
 func _ready():
 	if data == null:
 		data = CitizenData.new()
-		
+	
 	add_to_group("citizen")
 	builder = get_tree().get_first_node_in_group("builder")
 		
@@ -68,13 +75,18 @@ func _physics_process(delta):
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 	
-	# Periodically try to claim housing/a job if we don't have one yet.
-	# Cheap to skip most frames since this only matters when something changed
-	# (a new building went up) or on first spawn.
-	needs_check_timer -= delta
-	if needs_check_timer <= 0.0:
-		needs_check_timer = NEEDS_CHECK_INTERVAL
-		_refresh_housing_and_job()
+	# Periodically re-check whether this citizen is currently housed.
+	# NOTE: job assignment is intentionally NOT auto-retried here -- per the
+	# plan, manual (CitizenSelector) or policy (Milestone B, not yet built)
+	# assignment via PolicyEngine is the only path to a job right now.
+	housing_check_timer -= delta
+	if housing_check_timer <= 0.0:
+		housing_check_timer = HOUSING_CHECK_INTERVAL
+		_refresh_housing_status()
+	
+	_update_gathering(delta)
+	_update_building(delta)
+	_update_delivering(delta)
 	
 	# Update citizen stats
 	if data.job == "":
@@ -84,12 +96,11 @@ func _physics_process(delta):
 	
 	data.job_satisfaction = clamp(data.job_satisfaction, 0.0, 100.0)
 	
-	# Housing satisfaction eases toward 100 if housed, 0 if not -- a citizen
-	# sleeping in the street should feel it, but not flip instantly.
+	# Housing satisfaction eases toward 100 if housed, 0 if not
 	var housing_target = 100.0 if _has_housing else 0.0
 	data.housing_satisfaction = move_toward(data.housing_satisfaction, housing_target, delta * 20.0)
 	
-	data.happiness = clamp(50 - (100 - data.hunger) * 0.005 + (data.job_satisfaction * 0.01 if data.job != "" else -data.job_satisfaction * 0.01) + (data.housing_satisfaction - 50.0) * 0.1, 0, 100)
+	data.happiness = clamp(50 - (100 - data.energy) * 0.005 + (data.job_satisfaction * 0.01 if data.job != "" else -data.job_satisfaction * 0.01) + (data.housing_satisfaction - 50.0) * 0.1, 0, 100)
 	update_happiness_color()
 	
 	actual_speed = BASE_SPEED + (100 - data.happiness) / 100
@@ -111,23 +122,24 @@ func _physics_process(delta):
 		if attack_cooldown > 0.0:
 			attack_cooldown -= delta
 
-	# Wander timer
-	wander_timer -= delta
-	if is_on_floor() and wander_timer > 0:
-		if data.hunger > 0.0:
-			velocity.y = JUMP_HEIGHT
-	else:
-		wander_timer = randf_range(0, 2) * (100 - data.happiness)
-		idle_timer -= delta
-		if idle_timer <= 0:
-			set_new_destination(Vector3(
-				randf_range(-20, 20),
-				0,
-				randf_range(-20, 20)
-			))
-			idle_timer = clamp(data.happiness, 180, 6000)	
+	# Wander timer (skipped while actively gathering, building, or delivering)
+	if not is_gathering and not is_building and not is_delivering:
+		wander_timer -= delta
+		if is_on_floor() and wander_timer > 0:
+			if data.energy > 0.0:
+				velocity.y = JUMP_HEIGHT
+		else:
+			wander_timer = randf_range(0, 2) * (100 - data.happiness)
+			idle_timer -= delta
+			if idle_timer <= 0:
+				set_new_destination(Vector3(
+					randf_range(-20, 20),
+					0,
+					randf_range(-20, 20)
+				))
+				idle_timer = clamp(data.happiness, 180, 6000)	
 	
-	if not nav_agent.is_navigation_finished() and data.hunger > 0.0:
+	if not nav_agent.is_navigation_finished() and data.energy > 0.0:
 		var next = nav_agent.get_next_path_position()
 		var direction = (next - global_position).normalized()
 		var desired_velocity = Vector3(direction.x * actual_speed, velocity.y, direction.z * actual_speed)
@@ -139,8 +151,14 @@ func _physics_process(delta):
 		velocity.x = move_toward(velocity.x, 0, actual_speed)
 		velocity.z = move_toward(velocity.z, 0, actual_speed)
 	
-	data.hunger -= (data.metabolism + data.metabolism * velocity.length()) * 0.01
-	data.hunger = clamp(data.hunger, 0, 100)
+	# Slow citizen if citizen need food
+	if data.energy < 50.0:
+		var energy_mult = clamp(data.energy * 0.02, 0.25, 1.0)
+		velocity.x *= energy_mult
+		velocity.z *= energy_mult
+	
+	data.energy -= (data.metabolism + data.metabolism * Vector3(velocity.x, 0, velocity.z).length()) * delta
+	data.energy = clamp(data.energy, 0, 100)
 	
 	move_and_slide()
 	
@@ -154,9 +172,7 @@ func _physics_process(delta):
 					collider.take_damage(attack_damage, global_position, attack_knockback_force)
 				attack_cooldown = attack_cooldown_time
 				break
-	
-	update_stat_bars()
-	
+		
 	if position.y < -10:
 		velocity = Vector3.ZERO
 		position = Vector3(randf_range(-5, 5), 1, randf_range(-5, 5))
@@ -165,42 +181,157 @@ func _on_velocity_computed(safe_velocity: Vector3):
 	velocity.x = safe_velocity.x
 	velocity.z = safe_velocity.z
 
-func _refresh_housing_and_job() -> void:
+# Derives housing status directly from builder.buildings (the source of
+# truth for occupancy) instead of a since-removed has_housing_for() call.
+# A citizen is housed if their id appears in any BuildingInstance's residents.
+func _refresh_housing_status() -> void:
 	if builder == null:
 		return
+	_has_housing = false
+	for instance in builder.buildings.values():
+		if data.id in instance.residents:
+			_has_housing = true
+			break
 	
-	if builder.has_method("has_housing_for"):
-		_has_housing = builder.has_housing_for(self)
+	# Citizens without housing/a job just wander until the player assigns them
+	# something via CitizenSelector -> PolicyEngine (or a future policy).
+
+func _start_gathering() -> void:
+	var cell = builder.get_nearest_gatherable(global_position)
+	if cell == NO_CELL:
+		return
+	_start_gathering_at(cell)
+
+func _start_gathering_at(cell: Vector3i) -> void:
+	# Targeted version -- player assigned this specific tree via click (A.3).
+	# Also used by _start_gathering() after it resolves the nearest cell.
+	gather_target_cell = cell
+	is_gathering = true
+	set_new_destination(Vector3(cell.x, cell.y, cell.z))
+
+func _update_gathering(delta: float) -> void:
+	if not is_gathering:
+		return
+	if builder == null:
+		is_gathering = false
+		return
 	
-	if data.job == "" and builder.has_method("request_job"):
-		var job_name = builder.request_job(self)
-		if job_name != "":
-			data.job = job_name
+	# Tree already destroyed, go somewhere else
+	var structure_index = builder.gridmap.get_cell_item(gather_target_cell)
+	if structure_index < 0 or structure_index >= builder.structures.size() or not builder.structures[structure_index].gatherable:
+		is_gathering = false
+		_start_gathering()
+		return
+	
+	# Still walking -- no progress, UNLESS already physically close enough
+	# (guards against is_navigation_finished() never triggering -- see WORK_REACH).
+	var target_world_pos = Vector3(gather_target_cell.x, global_position.y, gather_target_cell.z)
+	var close_enough = global_position.distance_to(target_world_pos) <= WORK_REACH
+	if not nav_agent.is_navigation_finished() and not close_enough:
+		return
+	
+	# Arrived -- contribute labor toward the shared, persisted chop progress.
+	var gather_time = builder.structures[structure_index].gather_time
+	var energy_required = builder.structures[structure_index].energy_required
+	data.energy = clamp(data.energy - energy_required * delta, 0.0, 100.0)
+	# add_chop_progress returns a Dictionary (not a bool) -- it's ALWAYS
+	# truthy since it always has keys, even mid-chop. Must check the
+	# "completed" key explicitly, not the dict itself.
+	var result: Dictionary = builder.add_chop_progress(gather_target_cell, delta / gather_time)
+	if result.get("completed", false):
+		is_gathering = false
+		var energy_bonus: float = result.get("energy_bonus", 0.0)
+		if energy_bonus > 0.0:
+			data.energy = clamp(data.energy + energy_bonus, 0.0, 100.0)
+		var resource_type: String = result.get("resource_type", "")
+		var resource_yield: int = result.get("resource_yield", 0)
+		if resource_type != "" and resource_yield > 0:
+			carried_resources[resource_type] = carried_resources.get(resource_type, 0) + resource_yield
+		_try_deliver_or_resume_gathering()
+
+# Called once a gather finishes. If carrying resources, walk them to the
+# nearest active construction site (#4 -- wood only counts once it's
+# physically delivered). If none exists right now, per the design ("if
+# theres none they just carry it") the citizen simply keeps gathering with
+# the resources still on hand -- delivery is re-attempted after every
+# future gather completes, and a site may appear in the meantime.
+func _try_deliver_or_resume_gathering() -> void:
+	if carried_resources.is_empty() or builder == null:
+		_start_gathering()
+		return
+	var cell = builder.get_nearest_construction_site(global_position)
+	if cell == builder.NO_GATHERABLE_CELL:
+		_start_gathering()
+	else:
+		_start_delivering(cell)
+
+# Begins walking a load of carried resources to a construction site
+func _start_delivering(cell: Vector3i) -> void:
+	deliver_target_cell = cell
+	is_delivering = true
+	set_new_destination(Vector3(cell.x, cell.y, cell.z))
+
+func _update_delivering(_delta: float) -> void:
+	if not is_delivering:
+		return
+	if builder == null:
+		is_delivering = false
+		return
+
+	# Site finished, got demolished, or otherwise vanished mid-walk -- look for
+	# another site to deliver to (or just resume gathering while carrying).
+	if not builder.construction_sites.has(deliver_target_cell):
+		is_delivering = false
+		deliver_target_cell = NO_CELL
+		_try_deliver_or_resume_gathering()
+		return
+
+	var target_world_pos = Vector3(deliver_target_cell.x, global_position.y, deliver_target_cell.z)
+	var close_enough = global_position.distance_to(target_world_pos) <= WORK_REACH
+	if not nav_agent.is_navigation_finished() and not close_enough:
+		return
+
+	# Arrived -- hand the carried load off to the shared stockpile.
+	builder.deposit_resources(carried_resources)
+	carried_resources.clear()
+	is_delivering = false
+	deliver_target_cell = NO_CELL
+	_start_gathering()
+
+# Begins walking to an already-assigned construction site
+func _start_building(cell: Vector3i) -> void:
+	build_target_cell = cell
+	is_building = true
+	set_new_destination(Vector3(cell.x, cell.y, cell.z))
+
+func _update_building(delta: float) -> void:
+	if not is_building:
+		return
+	if builder == null:
+		is_building = false
+		return
+	
+	# Site finished, got demolished, or was unassigned -- stop walking toward it
+	if not builder.construction_sites.has(build_target_cell):
+		is_building = false
+		build_target_cell = NO_CELL
+		return
+	
+	var site = builder.construction_sites[build_target_cell]
+	if not data.id in site.assigned_builders:
+		is_building = false
+		build_target_cell = NO_CELL
+		return
+	
+	# Building costs energy while actively assigned to a site -- same
+	# per-second model as gathering (see Structure.build_energy_required).
+	var structure: Structure = builder.structures[site.structure_index]
+	data.energy = clamp(data.energy - structure.build_energy_required * delta, 0.0, 100.0)
 
 func set_new_destination(target):
-	# Pick a random point on the grid
 	nav_agent.target_position = target
 
 func update_happiness_color():
 	# Green when happy, red when unhappy
 	var t = data.happiness / 100.0
 	happiness_material.albedo_color = Color(1.0 - t, t, 0.0)
-
-func update_stat_bars():
-	if not Globals.player:
-		stat_bars_display.visible = false
-		stat_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
-		return
-
-	var dist = global_position.distance_to(Globals.player.global_position)
-	var in_range = dist < BAR_VISIBLE_DISTANCE
-
-	stat_bars_display.visible = in_range
-	stat_viewport.render_target_update_mode = (
-		SubViewport.UPDATE_ALWAYS if in_range else SubViewport.UPDATE_DISABLED
-	)
-
-	if in_range:
-		hunger_bar.value = data.hunger
-		happiness_bar.value = data.happiness
-		health_bar.value = data.health

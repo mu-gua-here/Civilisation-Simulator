@@ -12,6 +12,7 @@
 [ext_resource type="Resource" uid="uid://cntgl86ianngh" path="res://structures/building-small-a.tres" id="5_v5o2m"]
 [ext_resource type="Resource" uid="uid://c5fveedgvunju" path="res://structures/building-small-b.tres" id="6_f4603"]
 [ext_resource type="Resource" uid="uid://cqvwy36htu81" path="res://structures/road-split.tres" id="7_kqu4g"]
+[ext_resource type="Resource" uid="uid://2wto1trlxfg4" path="res://structures/grass-trees-tall.tres" id="7_yq6so"]
 [ext_resource type="Resource" uid="uid://dveu4dnue0d54" path="res://structures/road-intersection.tres" id="8_1swhv"]
 [ext_resource type="Resource" uid="uid://dqqe3iofnleup" path="res://structures/pavement-fountain.tres" id="8_4il2q"]
 [ext_resource type="Script" uid="uid://dec71yx4xpg2c" path="res://scripts/view.gd" id="8_yovpv"]
@@ -19,7 +20,6 @@
 [ext_resource type="Resource" uid="uid://bh65eqgid4kxy" path="res://structures/building-small-c.tres" id="10_84or2"]
 [ext_resource type="Resource" uid="uid://ccb475jeg7ym5" path="res://structures/grass-trees.tres" id="10_vaeah"]
 [ext_resource type="Resource" uid="uid://dtal0tl2ee336" path="res://structures/building-small-d.tres" id="12_8obn7"]
-[ext_resource type="Resource" uid="uid://y6jafhfnhbrp" path="res://structures/grass-trees-tall.tres" id="13_t5d2v"]
 [ext_resource type="Resource" uid="uid://bqb6g3t0tebno" path="res://structures/building-garage.tres" id="13_ut2cy"]
 [ext_resource type="FontFile" uid="uid://d0cxd77jybrcn" path="res://fonts/lilita_one_regular.ttf" id="16_vlub6"]
 [ext_resource type="Texture2D" uid="uid://bng0d1sou7c8a" path="res://sprites/coin.png" id="17_cjamx"]
@@ -28,41 +28,19 @@
 [ext_resource type="Texture2D" uid="uid://ciwbdik3tmxtp" path="res://sprites/instructions.png" id="22_pm3ni"]
 [ext_resource type="AudioStream" uid="uid://wvfsgkl8qob6" path="res://sounds/ambience.ogg" id="24_y6deb"]
 [ext_resource type="Script" uid="uid://c1x2k2iiyluhs" path="res://scripts/player.gd" id="26_2wyq8"]
+[ext_resource type="Resource" uid="uid://dtt3xgdnpvfso" path="res://structures/hut.tres" id="30_hut1"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_2f3dj"]
 margin = 1.0
 radius = 0.1
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_yq6so"]
-viewport_path = NodePath("Player/SubViewport")
-
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_og1vs"]
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_2f3dj"]
 
 [sub_resource type="ORMMaterial3D" id="ORMMaterial3D_2wyq8"]
 albedo_color = Color(0.48235294, 1, 1, 1)
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_og1vs"]
 material = SubResource("ORMMaterial3D_2wyq8")
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fv21b"]
-bg_color = Color(0.16745102, 0.16745105, 0.16745093, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tel4y"]
-bg_color = Color(0.4050653, 0.765706, 0.2580341, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qkpxi"]
-bg_color = Color(0.16745102, 0.16745105, 0.16745093, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5q0nq"]
-bg_color = Color(0.7900302, 0.43342826, 0.1260904, 1)
 
 [sub_resource type="LabelSettings" id="LabelSettings_q176i"]
 font = ExtResource("16_vlub6")
@@ -85,19 +63,18 @@ filter_low_hanging_obstacles = true
 filter_ledge_spans = true
 filter_walkable_low_height_spans = true
 
-[sub_resource type="MeshLibrary" id="MeshLibrary_2wyq8"]
+[sub_resource type="MeshLibrary" id="MeshLibrary_yq6so"]
 
 [node name="Main" type="Node3D" unique_id=516018331]
 script = ExtResource("1_2f3dj")
 
-[node name="Builder" type="Node3D" parent="." unique_id=837941451 node_paths=PackedStringArray("selector", "selector_container", "view_camera", "gridmap", "cash_display", "nav_region")]
+[node name="Builder" type="Node3D" parent="." unique_id=837941451 node_paths=PackedStringArray("selector", "selector_container", "view_camera", "gridmap", "nav_region")]
 script = ExtResource("1_jybm7")
-structures = Array[ExtResource("2_54v6r")]([ExtResource("2_bwyku"), ExtResource("3_o6o81"), ExtResource("3_6fpyf"), ExtResource("7_kqu4g"), ExtResource("8_1swhv"), ExtResource("4_b632v"), ExtResource("8_4il2q"), ExtResource("5_v5o2m"), ExtResource("6_f4603"), ExtResource("10_84or2"), ExtResource("12_8obn7"), ExtResource("13_ut2cy"), ExtResource("9_ifw7y"), ExtResource("10_vaeah"), ExtResource("13_t5d2v")])
+structures = Array[ExtResource("2_54v6r")]([ExtResource("30_hut1"), ExtResource("9_ifw7y"), ExtResource("10_vaeah"), ExtResource("7_yq6so"), ExtResource("2_bwyku"), ExtResource("3_o6o81"), ExtResource("3_6fpyf"), ExtResource("7_kqu4g"), ExtResource("8_1swhv"), ExtResource("4_b632v"), ExtResource("8_4il2q"), ExtResource("5_v5o2m"), ExtResource("6_f4603"), ExtResource("10_84or2"), ExtResource("12_8obn7"), ExtResource("13_ut2cy")])
 selector = NodePath("Selector")
 selector_container = NodePath("Selector/Container")
 view_camera = NodePath("../View/Camera")
 gridmap = NodePath("../NavigationRegion3D/GridMap")
-cash_display = NodePath("../CanvasLayer/Top/Cash")
 citizen_scene = ExtResource("18_og1vs")
 nav_region = NodePath("../NavigationRegion3D")
 
@@ -131,60 +108,22 @@ transform = Transform3D(0.9999997, 0, 0, 0, 0.9999999, 7.748604e-07, 0, -5.96046
 fov = 20.0
 
 [node name="Player" type="CharacterBody3D" parent="." unique_id=369604248]
-transform = Transform3D(0.099999994, -3.7252903e-09, 3.7252903e-09, 0, 0.10000001, 0, 3.7252903e-09, -3.7252903e-09, 0.099999994, -2.9802322e-08, 0, -2.9802322e-08)
 script = ExtResource("26_2wyq8")
+health = 100.0
 
-[node name="Sprite3D" type="Sprite3D" parent="Player" unique_id=1388871682]
-transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 1.8083644, 0)
-billboard = 1
-texture = SubResource("ViewportTexture_yq6so")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=1352695221]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.018294454, 0, 0)
-shape = SubResource("CapsuleShape3D_og1vs")
-debug_fill = false
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=2130162692]
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0)
+shape = SubResource("CapsuleShape3D_2f3dj")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Player" unique_id=1145694484]
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0)
 mesh = SubResource("CapsuleMesh_og1vs")
-
-[node name="SubViewport" type="SubViewport" parent="Player" unique_id=1061684363]
-disable_3d = true
-transparent_bg = true
-
-[node name="VBoxContainer" type="VBoxContainer" parent="Player/SubViewport" unique_id=348717451]
-anchors_preset = 14
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_top = -5.5
-offset_bottom = 5.5
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="HealthBar" type="ProgressBar" parent="Player/SubViewport/VBoxContainer" unique_id=594182022]
-custom_minimum_size = Vector2(0, 25)
-layout_mode = 2
-size_flags_vertical = 1
-theme_override_styles/background = SubResource("StyleBoxFlat_fv21b")
-theme_override_styles/fill = SubResource("StyleBoxFlat_tel4y")
-value = 50.0
-show_percentage = false
-metadata/_edit_use_anchors_ = true
-
-[node name="HungerBar" type="ProgressBar" parent="Player/SubViewport/VBoxContainer" unique_id=1595264371]
-custom_minimum_size = Vector2(0, 25)
-layout_mode = 2
-size_flags_vertical = 1
-theme_override_styles/background = SubResource("StyleBoxFlat_qkpxi")
-theme_override_styles/fill = SubResource("StyleBoxFlat_5q0nq")
-value = 50.0
-show_percentage = false
-metadata/_edit_use_anchors_ = true
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=327302228]
 follow_viewport_enabled = true
 
 [node name="Top" type="Control" parent="CanvasLayer" unique_id=560779850]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -235,7 +174,7 @@ autoplay = true
 navigation_mesh = SubResource("NavigationMesh_2wyq8")
 
 [node name="GridMap" type="GridMap" parent="NavigationRegion3D" unique_id=400697058]
-mesh_library = SubResource("MeshLibrary_2wyq8")
+mesh_library = SubResource("MeshLibrary_yq6so")
 cell_size = Vector3(1, 1, 1)
 cell_center_x = false
 cell_center_y = false
@@ -244,5 +183,6 @@ cell_center_z = false
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=558144835]
 environment = ExtResource("1_yndf3")
 
-[node name="CitizenSelector" type="Node3D" parent="." unique_id=1161909614]
+[node name="CitizenSelector" type="Node3D" parent="." unique_id=1161909614 node_paths=PackedStringArray("view_camera")]
 script = ExtResource("20_tel4y")
+view_camera = NodePath("../View/Camera")

@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="Structure" format=3 uid="uid://ylk5nppwnyla"]
+
+[ext_resource type="PackedScene" uid="uid://eh0ei4gw8vu4" path="res://models/town/construction-tile.tscn" id="1_tugqf"]
+[ext_resource type="Script" uid="uid://b4i7dfy6u3e8w" path="res://scripts/structure.gd" id="2_w52tb"]
+
+[resource]
+script = ExtResource("2_w52tb")
+model = ExtResource("1_tugqf")

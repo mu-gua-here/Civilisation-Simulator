@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://cpdydft7pmk55"]
+
+[ext_resource type="Script" uid="uid://cgvabl0q1sgw5" path="res://scripts/progress_indicator_3d.gd" id="1_pi3d"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_pi3d"]
+viewport_path = NodePath("Sprite3D/SubViewport")
+
+[node name="ProgressIndicator3D" type="Node3D" unique_id=661065465]
+script = ExtResource("1_pi3d")
+
+[node name="Sprite3D" type="Sprite3D" parent="." unique_id=1707124272]
+pixel_size = 0.005
+billboard = 1
+texture = SubResource("ViewportTexture_pi3d")
+
+[node name="SubViewport" type="SubViewport" parent="Sprite3D" unique_id=2113247328]
+disable_3d = true
+transparent_bg = true
+size = Vector2i(100, 30)
+
+[node name="ProgressBar" type="ProgressBar" parent="Sprite3D/SubViewport" unique_id=1613809675]
+custom_minimum_size = Vector2(100, 25)
+offset_right = 100.0
+offset_bottom = 25.0
+show_percentage = false

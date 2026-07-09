@@ -2,9 +2,9 @@ extends Node3D
 
 var player: CharacterBody3D = null
 
-# Player global stuff
+# ----------- PLAYER ------------
+
 var player_health: float = 100.0
-var player_hunger: float = 0.0
 var player_energy: float = 100.0
 
 func register_player(p: CharacterBody3D) -> void:
@@ -18,5 +18,5 @@ func get_player_position() -> Vector3:
 func set_player_health(v: float) -> void:
 	player_health = clamp(v, 0.0, 100.0)
 
-func set_player_hunger(v: float) -> void:
-	player_hunger = clamp(v, 0.0, 100.0)
+func set_player_energy(v: float) -> void:
+	player_energy = clamp(v, 0.0, 100.0)

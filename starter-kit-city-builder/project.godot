@@ -19,7 +19,7 @@ config/tags=PackedStringArray("starterkit")
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 boot_splash/bg_color=Color(0.92549, 0.92549, 0.960784, 1)
-boot_splash/image="res://splash-screen.png"
+boot_splash/image="uid://bi2ahuqvd8tes"
 config/icon="res://icon.png"
 
 [autoload]
@@ -27,6 +27,11 @@ config/icon="res://icon.png"
 Audio="*res://scripts/audio.gd"
 NameGenerator="*uid://dafqumavpoyr"
 Globals="*uid://menlh8q7i3t4"
+PolicyEngine="*res://scripts/policy_engine.gd"
+
+[beckett]
+
+effort_schema=2
 
 [display]
 
@@ -38,6 +43,10 @@ movie_writer/movie_file="D:/Godot/recording.avi"
 version_control/size/mode=4
 version_control/default_cell_height=0.1
 version_control/default_cell_size=0.1
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/itch_uploader/plugin.cfg", "res://addons/script_tabs/plugin.cfg")
 
 [input]
 
@@ -227,10 +236,18 @@ selection_9={
 ]
 }
 
+[itch_uploader]
+
+itch_page_url="https://mu-gua-here.itch.io/civilisation-simulator"
+
 [navigation]
 
 3d/default_cell_size=0.1
 3d/default_cell_height=0.1
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
 
 [rendering]
 

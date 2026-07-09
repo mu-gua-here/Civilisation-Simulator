@@ -7,26 +7,31 @@ var camera_rotation:Vector3
 @onready var copy_target := $SpringArm3D/CopyMe as Marker3D
 @onready var camera := $Camera as Camera3D
 
-@export var max_zoom := 50.0
+@export var max_zoom := 75.0
 @export var min_zoom := 1.0
 @export var scroll_zoom_speed := 2.0
 
 # Viewing
-@export_range(0.0, 1.0) var mouse_sensitivity = 0.01
-@export var max_tilt_limit := 0.0
-@export var min_tilt_limit := -90.0
-@export var arm_greater_threshold := 10.0
-@export var arm_less_threshold := 2.0
+@export_range(0.1, 5.0) var mouse_sensitivity = 2.5
+const max_tilt_limit := 0.0
+const min_tilt_limit := -90.0
+const arm_greater_threshold := 10.0
+const arm_less_threshold := 2.0
 
 var zoom:float = 5.0
 
 var camera_offset := Vector3.ZERO
 
-# Keyboard camera rotation controls
-var rotate_speed: float = 0.0  # current angular speed (ramps up while held)
-const ROTATE_MAX_SPEED := 120.0  # degrees/sec at full ramp
-const ROTATE_ACCEL := 240.0      # degrees/sec^2 ramp-up rate
-const ROTATE_DECEL := 480.0      # degrees/sec^2 ramp-down rate when released
+# Keyboard camera and zoom rotation controls
+var rotate_speed: float = 0.0	# current angular speed (ramps up while held)
+const ROTATE_MAX_SPEED := 120.0	# degrees/sec at full ramp
+const ROTATE_ACCEL := 240.0		# degrees/sec^2 ramp-up rate
+const ROTATE_DECEL := 480.0		# degrees/sec^2 ramp-down rate when released
+
+var zoom_speed: float = 0.0
+const ZOOM_MAX_SPEED := 40.0
+const ZOOM_ACCEL := 40.0
+const ZOOM_DECEL := 80.0
 
 func get_player_position() -> Vector3:
 	# Adjust this path to wherever your citizen/player node actually is
@@ -48,12 +53,11 @@ func _process(delta):
 	
 	# SpringArm3D positions CopyMe instantly every physics frame
 	# So can interpolate camera zoom here
-	
 	spring_arm.spring_length = zoom
 	camera.global_position = camera.global_position.lerp(copy_target.global_position, delta * 10.0)
 	camera.global_rotation = copy_target.global_rotation
 	
-	# Enable/Disable SpringArm if zoom is within range
+	# Enable/disable SpringArm if zoom is within range
 	if zoom > arm_less_threshold and zoom < arm_greater_threshold:
 		spring_arm.collision_mask = 1
 	else:
@@ -103,7 +107,11 @@ func handle_input(_delta):
 	# Continuous zoom (keyboard +/-)
 	var zoom_axis = Input.get_axis("zoom_in_hold", "zoom_out_hold")
 	if zoom_axis != 0:
-		zoom = clamp(zoom + zoom_axis * _delta * 20.0, 3, 50)
+		zoom_speed = move_toward(zoom_speed, zoom_axis * ZOOM_MAX_SPEED, ZOOM_ACCEL * _delta)
+	else:
+		zoom_speed = move_toward(zoom_speed, 0.0, ZOOM_DECEL * _delta)
+	
+	zoom = clamp(zoom + _delta * zoom_speed, min_zoom, max_zoom)
 	
 	# Final camera position = player position + offset
 	camera_position = get_player_position() + camera_offset
@@ -111,17 +119,19 @@ func handle_input(_delta):
 func _input(event):
 	
 	# Mouse drag rotation
-	# NOTE: PROBLEM: camera_rotate needs a key/trackpad alternative
 	if event is InputEventMouseMotion:
 		if Input.is_action_pressed("camera_rotate"):
 			camera_rotation += Vector3(-event.relative.y / 10, -event.relative.x / 10, 0)
-			camera_rotation.x = clamp(camera_rotation.x, min_tilt_limit, max_tilt_limit)
 
 	# Trackpad: two-finger swipe rotates camera
 	elif event is InputEventPanGesture:
-		camera_rotation.y -= event.delta.x * 1.5
-
+		camera_rotation.x -= event.delta.y * mouse_sensitivity
+		camera_rotation.y -= event.delta.x * mouse_sensitivity
+	
 	# Trackpad: pinch to zoom
 	elif event is InputEventMagnifyGesture:
 		# factor > 1 means pinching outward (fingers spreading) -> zoom in
 		zoom = clamp(zoom / event.factor, 3, 50)
+	
+	# Clamp pitch to prevent scrolling too far
+	camera_rotation.x = clamp(camera_rotation.x, min_tilt_limit, max_tilt_limit)

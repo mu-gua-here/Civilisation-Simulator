@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Structure" format=3 uid="uid://dtt3xgdnpvfso"]
+
+[ext_resource type="PackedScene" uid="uid://kweuhu1es7li" path="res://models/primitive/hut.scn" id="1_j7wqg"]
+[ext_resource type="Script" uid="uid://b4i7dfy6u3e8w" path="res://scripts/structure.gd" id="2_t6pnt"]
+
+[resource]
+script = ExtResource("2_t6pnt")
+model = ExtResource("1_j7wqg")
+type = 1
+residential_floors = 1
+build_cost = {
+"wood": 15
+}
+build_time = 6.0
